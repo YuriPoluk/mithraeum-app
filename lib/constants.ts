@@ -12,6 +12,20 @@ export const ASSETS = [
     'townhall.glb'
 ]
 
+export const FLAG_MODELS = [
+    'topping_0.glb',
+    'topping_1.glb',
+    'topping_2.glb',
+    'topping_3.glb',
+    'topping_4.glb',
+    'topping_5.glb',
+    'topping_6.glb',
+    'topping_7.glb',
+    'topping_8.glb',
+    'topping_9.glb',
+    'topping_10.glb',
+]
+
 export interface CameraParams {
     position: Vector3
     rotation: Euler
@@ -34,9 +48,9 @@ export interface FireData {
 
 export const FIRES_DATA: FireData[] = [
     {
-        position: new Vector3(-2.605, -0.1, 3.412),
+        position: new Vector3(-2.615, -0.08, 3.412),
         scale: new Vector3(1, 3, 1).multiplyScalar(0.05),
-        rotation: new Vector3(0, 0, -0.3)
+        rotation: new Vector3(0, 0, -0.1)
     },
     {
         position: new Vector3(-0.98, 0.02, 2.26),
@@ -78,5 +92,13 @@ export const FIRES_DATA: FireData[] = [
     {
         position: new Vector3(-2.143, 0.6, -1.001),
         scale: new Vector3(1.7, 1, 1.7).multiplyScalar(0.05),
-    }
+    },
+    {
+        position: new Vector3(0.345, 0.422, 0.55),
+        scale: new Vector3(0.5, 1.7, 0.5).multiplyScalar(0.05),
+    },
+    {
+        position: new Vector3(- 2.12, 0.45, 0.86),
+        scale: new Vector3(0.5, 1.7, 0.5).multiplyScalar(0.05),
+    },
 ]

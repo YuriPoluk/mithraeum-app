@@ -26,6 +26,10 @@
   "dependencies": {
     "@types/dat.gui": "^0.7.7",
     "@types/three": "^0.148.0",
+    "ammojs-typed": "^1.0.6",
+    "cannon-es": "^0.20.0",
+    "cannon-es-debugger": "^1.0.0",
+    "gsap": "^3.11.4",
     "three": "^0.148.0"
   }
 }
