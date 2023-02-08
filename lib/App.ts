@@ -62,6 +62,8 @@ constructor(container: HTMLCanvasElement) {
 
     }
 
+  // API
+
   setTopping(path: string) {
     this.currentScene.setTopping(path)
   }
@@ -84,5 +86,13 @@ constructor(container: HTMLCanvasElement) {
 
   async setDecorText(text: string, color: string | number = 0xffffff) {
       this.currentScene.setDecorText(text, color)
+  }
+
+  setZoom(z: boolean) {
+      this.currentScene.setZoom(z)
+  }
+
+  setFog(f: boolean) {
+    this.currentScene.setFog(f)
   }
 }

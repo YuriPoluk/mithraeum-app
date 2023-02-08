@@ -1,14 +1,16 @@
 import AppScene from './AppScene';
-import { Scene, AmbientLight, PointLight } from 'three';
+import { Scene, AmbientLight, PointLight, FogExp2, Mesh, Material, Shader, MeshBasicMaterial, SphereGeometry, BackSide } from 'three';
 import { WebGLRenderer, PerspectiveCamera } from 'three';
 import AssetLoader from '../utils/AssetLoader'
 import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { PointerLockControls } from "three/examples/jsm/controls/PointerLockControls"
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls"
-import Fire, { FlameModes } from '../Fire'
+import Fire, { FlameModes } from '../Flame'
 import FireBuilder from '../FireBuilder'
-import { CAMERA_POSITIONS, ASSETS, FIRES_DATA } from '../constants'
+import { CAMERA_POSITIONS, ASSETS, FIRES_DATA, FLAG_POSITION, CameraParams } from '../constants'
 import Flag from '../Flag'
+import gsap from 'gsap';
+
+import changeFogShader from '../Fog'
 
 export default class LoginScene implements AppScene {
     private scene!: Scene
@@ -16,6 +18,9 @@ export default class LoginScene implements AppScene {
     private renderer!: WebGLRenderer
     private fires: Fire[] = []
     private flag!: Flag
+    private shaders: Shader[] = []
+    private currentCameraAnimations: gsap.core.Tween[] = []
+    private FOG_DEFAULT_DENSITY = 1.3
 
     constructor(renderer: WebGLRenderer) {
         this.initGraphics(renderer)
@@ -40,11 +45,7 @@ export default class LoginScene implements AppScene {
             if(event.key == 'd') {
                 this.camera.position.z += 0.01
             }
-          }, false);
-
-        const domElement = renderer.domElement
-        const orbitControls = new OrbitControls(this.camera, domElement)
-        orbitControls.zoomSpeed = 0.5
+          }, false);      
 
         this.initObjects()
 
@@ -60,12 +61,19 @@ export default class LoginScene implements AppScene {
         }, 3000)
     }
 
+    modifyShader = (s: Shader) => {
+        this.shaders.push(s)
+        s.uniforms.fogTime = {value: 0.0};
+    }
+
     initGraphics(renderer: WebGLRenderer) {
         this.renderer = renderer
         this.scene = new Scene()
         this.camera = new PerspectiveCamera(75, 1, 0.001, 1000.0);
-        this.camera.position.copy(CAMERA_POSITIONS.main.position)
-        this.camera.setRotationFromEuler(CAMERA_POSITIONS.main.rotation)
+        this.camera.position.copy(CAMERA_POSITIONS.zoomOut.position)
+        this.camera.setRotationFromEuler(CAMERA_POSITIONS.zoomIn.rotation)
+        changeFogShader()
+        this.scene.fog = new FogExp2(0x616f8c, this.FOG_DEFAULT_DENSITY)
     }
 
     initObjects() {
@@ -75,21 +83,61 @@ export default class LoginScene implements AppScene {
         pointLight.position.set(0, 20, 7)
         scene.add(ambientLight, pointLight)
         ASSETS.forEach(assetPath => {
-            AssetLoader.loadModel('/scene/' + assetPath, (gltf: GLTF) => { scene.add(gltf.scene) })
+            AssetLoader.loadModel('/scene/' + assetPath, (gltf: GLTF) => { 
+                scene.add(gltf.scene) 
+                gltf.scene.children.forEach(c => {
+                    if (c instanceof Mesh) c.material.onBeforeCompile = this.modifyShader.bind(this)
+                })
+            })
         })
 
         FIRES_DATA.forEach(fireData => {
             const fire = FireBuilder.build(fireData)
             this.scene.add(fire)
             this.fires.push(fire)
+            const fireMaterial = fire.fireMesh.material as Material
+            fireMaterial.onBeforeCompile = this.modifyShader.bind(this)
         })
 
-        const flag = new Flag()
+        const flag = new Flag(this.modifyShader.bind(this))
         this.scene.add(flag)
         flag.scale.setScalar(1.22)
-        flag.position.set(-3, -0.4, 3.2)
+        flag.position.copy(FLAG_POSITION)
         flag.rotation.y = - Math.PI/2
         this.flag = flag
+        const sky = new Mesh(
+            new SphereGeometry(1000, 32, 32),
+            new MeshBasicMaterial({
+                color: 0x1d2433,
+                side: BackSide,
+            })
+        );
+        sky.material.onBeforeCompile = this.modifyShader.bind(this);
+        this.scene.add(sky);
+    }
+
+    animateCameraTo(p: CameraParams) {
+        this.currentCameraAnimations.forEach(a => {
+            a.kill()
+        })
+
+        const positionAnim =gsap.to(this.camera.position, {
+            x: p.position.x,
+            y: p.position.y,
+            z: p.position.z,
+            ease: 'power3.inOut',
+            duration: 0.6
+        })
+
+        const rotationAnim =gsap.to(this.camera, {
+            x: p.rotation.x,
+            y: p.rotation.y,
+            z: p.rotation.z,
+            ease: 'power3.inOut',
+            duration: 0.6
+        })
+
+        this.currentCameraAnimations = [positionAnim, rotationAnim]
     }
 
     elapsedTime = 0
@@ -97,6 +145,9 @@ export default class LoginScene implements AppScene {
         this.elapsedTime += dt
         this.fires.forEach(fire => fire.update(this.elapsedTime))
         this.flag.update(dt)
+        this.shaders.forEach(s => {
+            s.uniforms.fogTime = { value: this.elapsedTime }
+        })
     }
 
     render(dt: number) {
@@ -135,5 +186,17 @@ export default class LoginScene implements AppScene {
   
     async setDecorText(text: string, color: string | number = 0xffffff) {
         this.flag.setDecorText(text, color)
+    }
+
+    setZoom(z: boolean) {
+        this.animateCameraTo(z ? CAMERA_POSITIONS.zoomIn : CAMERA_POSITIONS.zoomOut)
+    }
+
+    setFog(f: boolean) {
+        const densityTarget = f ? this.FOG_DEFAULT_DENSITY : 0.1
+        gsap.to(this.scene.fog, {
+            density: densityTarget,
+            duration: 1.5
+        })
     }
 }

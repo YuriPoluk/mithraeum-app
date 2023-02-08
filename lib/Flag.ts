@@ -1,4 +1,4 @@
-import { TextureLoader, Texture, Group, PlaneGeometry, Mesh, Vector3, Quaternion, BoxGeometry, MeshPhongMaterial, Material, Object3D } from "three"
+import { TextureLoader, Texture, Group, PlaneGeometry, Mesh, Vector3, Quaternion, BoxGeometry, MeshPhongMaterial, Material, Object3D, Shader } from "three"
 import AssetLoader from './utils/AssetLoader'
 import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import AmmoModule from 'ammojs-typed'
@@ -36,10 +36,12 @@ export default class Flag extends Group {
 
     textures: Texture[] = []
     material!: FlagLambertMaterial
+    modifyShader: (s: Shader) => void
 
-    constructor() {
+    constructor(modifyShader: (s: Shader) => void) {
         super()
-		this.init()
+        this.init()
+        this.modifyShader = modifyShader
     }
 
     async init() {
@@ -72,7 +74,12 @@ export default class Flag extends Group {
     async createObjects() {
         // Flag bones models
         this.flagGroup = new Group()
-        AssetLoader.loadModel('/flag/models/pole.glb', (gltf: GLTF) => { this.flagGroup.add(gltf.scene) })
+        AssetLoader.loadModel('/flag/models/pole.glb', (gltf: GLTF) => { 
+            this.flagGroup.add(gltf.scene) 
+            gltf.scene.children.forEach(c => {
+                if (c instanceof Mesh) c.material.onBeforeCompile = this.modifyShader
+            })
+        })
         this.setTopping('/flag/models/topping_0.glb')
         this.flagGroup.scale.setScalar(0.005)
         this.flagGroup.rotation.y = Math.PI/2
@@ -83,7 +90,7 @@ export default class Flag extends Group {
 
         // Vertical bone physical body
         pos.y = 0.35
-        const pole = this.createStaticParalellepiped( 0.01, 0.7, 0.01, pos, quat, new MeshPhongMaterial( { wireframe: true } ) );
+        const pole = this.createStaticParalellepiped( 0.01, 0.7, 0.01, pos, quat, new MeshPhongMaterial( { visible: false } ) );
         this.add(pole)
 
         // The cloth
@@ -112,6 +119,7 @@ export default class Flag extends Group {
         }
         // const clothMaterial = new FlagMaterial(textures, textureColors)
         this.material = new FlagLambertMaterial(this.textures, this.texColors)
+        this.material.onBeforeCompile = this.modifyShader
         this.cloth = new Mesh( clothGeometry, this.material );
         this.cloth.castShadow = true;
         this.cloth.receiveShadow = true;
@@ -234,6 +242,9 @@ export default class Flag extends Group {
         if (this.topping) this.flagGroup.remove(this.topping)
         this.topping = model.scene
         this.flagGroup.add(model.scene)
+        model.scene.children.forEach(c => {
+            if (c instanceof Mesh) c.material.onBeforeCompile = this.modifyShader
+        })
     }
   
     async setCanvas(path: string) {

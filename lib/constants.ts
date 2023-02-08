@@ -32,9 +32,13 @@ export interface CameraParams {
 }
 
 export const CAMERA_POSITIONS: { [key: string]: CameraParams } = {
-    main: {
-        position: new Vector3(- 2.6, 0.6, 4.7),
-        rotation: new Euler(- 0.02, - 0.16, -0.005)
+    zoomOut: {
+        position: new Vector3(- 2.4, 0.08, 4.3),
+        rotation: new Euler(-0.021, -0.171, -0.005)
+    },
+    zoomIn:{
+        position: new Vector3(-3.15 + 0.35, 0.1, 3.8),
+        rotation: new Euler(- 0.078, -0.126, -0.011)
     }
 }
 
@@ -46,9 +50,11 @@ export interface FireData {
     distance?: number
 }
 
+export const FLAG_POSITION = new Vector3(-3 + 0.35, -0.4, 3.2)
+
 export const FIRES_DATA: FireData[] = [
     {
-        position: new Vector3(-2.615, -0.08, 3.412),
+        position: new Vector3(-2.615 + 0.35, -0.08, 3.412),
         scale: new Vector3(1, 3, 1).multiplyScalar(0.05),
         rotation: new Vector3(0, 0, -0.1)
     },

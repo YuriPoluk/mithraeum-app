@@ -1,4 +1,4 @@
-import { BoxGeometry, ClampToEdgeWrapping, Color, LinearFilter, Matrix4, Mesh, MeshBasicMaterial, Object3D, PointLight, ShaderMaterial, TextureLoader, UniformsUtils, Vector3 } from "three";
+import { BoxGeometry, ClampToEdgeWrapping, Color, LinearFilter, Matrix4, Mesh, Object3D, PointLight, ShaderMaterial, TextureLoader, UniformsLib, UniformsUtils, Vector3 } from "three";
 import { FireShader } from "./FireShader";
 import gsap from 'gsap'
 
@@ -34,7 +34,6 @@ const FLAME_PARAMS = {
 
 export default class Flame extends Object3D {
 
-    wireframe: Mesh
     fireMesh: Mesh
     light: PointLight
     distance: number
@@ -53,14 +52,21 @@ export default class Flame extends Object3D {
         fireTex.wrapS = fireTex.wrapT = ClampToEdgeWrapping;
         const color = new Color(0xfcc603)
 
+        const flameUniforms = UniformsUtils.merge([
+            UniformsLib.common,
+            UniformsLib.fog,
+            UniformsUtils.clone(FireShader.uniforms),
+        ])
+
         var fireMaterial = new ShaderMaterial( {
             defines         : FireShader.defines,
-            uniforms        : UniformsUtils.clone(FireShader.uniforms),
+            uniforms        : flameUniforms,
             vertexShader    : FireShader.vertexShader,
             fragmentShader  : FireShader.fragmentShader,
             transparent     : true,
             depthWrite      : false,
             depthTest       : true,
+            fog: true
         } );
             
         fireMaterial.uniforms.fireTex.value = fireTex;
@@ -70,14 +76,6 @@ export default class Flame extends Object3D {
         fireMaterial.uniforms.seed.value = Math.random() * 19.19;
         this.fireMesh = new Mesh(new BoxGeometry( 1.0, 1.0, 1.0 ), fireMaterial)
         this.add(this.fireMesh)
-
-        const wireframeMaterial = new MeshBasicMaterial({
-            color : new Color(0xffffff),
-            wireframe : true
-        })
-
-        this.wireframe = new Mesh(this.fireMesh.geometry, wireframeMaterial);
-        // this.add(this.wireframe);
 
         this.light = new PointLight(color, intensity, distance)
         this.add(this.light)

@@ -1,4 +1,4 @@
-import Fire from "./Fire";
+import Fire from "./Flame";
 import { FireData } from "./constants";
 
 export default class FireBuilder {
