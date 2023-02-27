@@ -1,9 +1,12 @@
 import { Texture, TextureLoader } from 'three'
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
 import { GLTF, GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
 export default class AssetLoader {
     static GLTFLoader = new GLTFLoader()
     static textureLoader = new TextureLoader()
+    
+
 
     static loadModel(path: string, onLoad:(gltf: GLTF) => void, onProgress?: () => void, onError?: (err: ErrorEvent) => void) {
         AssetLoader.GLTFLoader.load(path, onLoad, onProgress, onError)
@@ -21,3 +24,7 @@ export default class AssetLoader {
         return AssetLoader.textureLoader.load(path, onProgress)
     }
 }
+
+const dracoLoader = new DRACOLoader();
+dracoLoader.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/');
+AssetLoader.GLTFLoader.setDRACOLoader( dracoLoader );

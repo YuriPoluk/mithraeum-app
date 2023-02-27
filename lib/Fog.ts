@@ -99,15 +99,15 @@ float FBM(vec3 p) {
 }
 `;
 
-const changeFogShader = () => {
+const injectFogShader = () => {
     THREE.ShaderChunk.fog_fragment = `  
     #ifdef USE_FOG
       vec3 fogOrigin = cameraPosition;
       vec3 fogDirection = normalize(vWorldPosition - fogOrigin);
       float fogDepth = distance(vWorldPosition, fogOrigin);
       // f(p) = fbm( p + fbm( p ) )
-      vec3 noiseSampleCoord = vWorldPosition * 0.00025 * 2000. + vec3(
-          0.0, 0.0, fogTime * 0.02);
+      vec3 noiseSampleCoord = vWorldPosition * 0.00025 * 2500. + vec3(
+          0.0, 0.0, fogTime * 0.008);
       float noiseSample = FBM(noiseSampleCoord + FBM(noiseSampleCoord)) * 0.5 + 0.5;
       fogDepth *= mix(noiseSample, 1.0, saturate((fogDepth - 5000.0) / 5000.0));
       fogDepth *= fogDepth;
@@ -116,7 +116,7 @@ const changeFogShader = () => {
           1.0 - exp(-fogDepth * fogDirection.y * fogDensity)) / fogDirection.y;
       fogFactor = saturate(fogFactor);
 
-      if (vWorldPosition.z > 1.95)
+      if (vWorldPosition.z > 1.7)
         fogFactor = 0.0;
 
       // float fogFactor = 1.0 - exp( - fogDensity * fogDensity * fogDepth * fogDepth );
@@ -154,5 +154,5 @@ export const modifyShader = (s: Shader) => {
     // s.uniforms.fogZ = {value: -2};
 }
 
-export default changeFogShader
+export default injectFogShader
 

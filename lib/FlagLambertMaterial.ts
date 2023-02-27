@@ -1,4 +1,4 @@
-import { Color, DoubleSide, ShaderMaterial, Texture, UniformsUtils, UniformsLib } from "three"
+import { Color, DoubleSide, ShaderMaterial, Texture, UniformsUtils, UniformsLib, ShaderLib } from "three"
 
 
 export type FlagTexturesColors = {
@@ -19,6 +19,7 @@ export default class FlagLambertMaterial extends ShaderMaterial {
 
         this.defines.USE_UV = ' '
         this.defines.USE_MAP = ' '
+        this.uniforms.reflectii
 
         this.setUniforms(textures, colors)
     }
@@ -34,6 +35,7 @@ export default class FlagLambertMaterial extends ShaderMaterial {
 
 const flagShader = {
     uniforms: UniformsUtils.merge([
+        ShaderLib.lambert.uniforms,
         UniformsLib.lights,
         UniformsLib.common,
         {

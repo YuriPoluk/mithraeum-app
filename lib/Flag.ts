@@ -1,4 +1,4 @@
-import { TextureLoader, Texture, Group, PlaneGeometry, Mesh, Vector3, Quaternion, BoxGeometry, MeshPhongMaterial, Material, Object3D, Shader } from "three"
+import { TextureLoader, Texture, Group, PlaneGeometry, Mesh, Vector3, Quaternion, BoxGeometry, MeshPhongMaterial, Material, Object3D, Shader, MeshBasicMaterial } from "three"
 import AssetLoader from './utils/AssetLoader'
 import { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import AmmoModule from 'ammojs-typed'
@@ -12,7 +12,7 @@ export default class Flag extends Group {
     private physicsWorld!: AmmoModule.btSoftRigidDynamicsWorld
     private cloth!: Mesh
     private topping!: Group
-    private flagGroup!: Group
+    flagGroup!: Group
     debugSpheres: Mesh[] = []
     GRAVITY_CONSTANT = - 9.81;
     MARGIN = 0.07
@@ -20,6 +20,7 @@ export default class Flag extends Group {
     rigidBodies = []
     objectsCreated = false
     isWindy = false
+    hitbox!: Mesh
     private texIndices = {
         canvas: 0,
         pattern: 1,
@@ -40,7 +41,6 @@ export default class Flag extends Group {
 
     constructor(modifyShader: (s: Shader) => void) {
         super()
-        this.init()
         this.modifyShader = modifyShader
     }
 
@@ -74,13 +74,13 @@ export default class Flag extends Group {
     async createObjects() {
         // Flag bones models
         this.flagGroup = new Group()
-        AssetLoader.loadModel('/flag/models/pole.glb', (gltf: GLTF) => { 
+        AssetLoader.loadModel('/flag/models/palka_0.glb', (gltf: GLTF) => { 
             this.flagGroup.add(gltf.scene) 
             gltf.scene.children.forEach(c => {
                 if (c instanceof Mesh) c.material.onBeforeCompile = this.modifyShader
             })
         })
-        this.setTopping('/flag/models/topping_0.glb')
+        this.setTopping('/flag/models/palka_1.glb')
         this.flagGroup.scale.setScalar(0.005)
         this.flagGroup.rotation.y = Math.PI/2
         this.add(this.flagGroup)
@@ -156,6 +156,13 @@ export default class Flag extends Group {
         clothSoftBody.setActivationState( 4 ); 
 
         this.objectsCreated = true
+
+        const hitboxWidth = clothWidth * 1.6
+        const hitboxHeight = clothHeight * 1.5
+        this.hitbox = new Mesh(new BoxGeometry(0.1, hitboxHeight, hitboxWidth), new MeshBasicMaterial({wireframe: true}))
+        this.hitbox.position.y = hitboxHeight/2
+        this.hitbox.visible = false
+        this.add(this.hitbox)
     }
     
     createStaticParalellepiped(sx: number, sy: number, sz: number, pos: Vector3, quat: Quaternion, material: Material) {

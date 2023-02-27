@@ -18,7 +18,7 @@ const FLAME_PARAMS = {
     [FlameModes.HOLLOW]: {
         distanceMultiplier: 0.5,
         intensityMultiplier: 0.5,
-        scale: new Vector3(0.8, 0.6, 0.8)
+        scale: new Vector3(0.8, 0.5, 0.8)
     },
     [FlameModes.NORMAL]: {
         distanceMultiplier: 1,
@@ -79,26 +79,7 @@ export default class Flame extends Object3D {
 
         this.light = new PointLight(color, intensity, distance)
         this.add(this.light)
-    }
-
-    setMode(m: FlameModes) {
-        const { distanceMultiplier, intensityMultiplier, scale } = FLAME_PARAMS[m]
-        
-        gsap.to(this, {
-            distanceMultiplier,
-            intensityMultiplier,
-            duration: 0.5
-        })
-        gsap.to(this.fireMesh.scale, {
-            x: scale.x,
-            y: scale.y,
-            z: scale.z,
-            duration: 0.5
-        })
-        gsap.to(this.fireMesh.position, {
-            y: -0.5 + scale.y / 2,
-            duration: 0.5
-        })
+        this.setMode(FlameModes.EXTINCT, 0)
     }
 
     update(time: number) {
@@ -120,5 +101,45 @@ export default class Flame extends Object3D {
         this.light.distance = this.distance * this.distanceMultiplier + fireIntensityNoise / 2
         this.light.intensity = this.intensity * this.intensityMultiplier + fireIntensityNoise / 2
         this.light.decay = 2 + fireIntensityNoise / 3
+    }
+
+    setMode(m: FlameModes, duration: number) {
+        const { distanceMultiplier, intensityMultiplier, scale } = FLAME_PARAMS[m]
+        const tl = gsap.timeline()
+        tl
+        .to(this, {
+            distanceMultiplier,
+            intensityMultiplier,
+            duration
+        }, 0)
+        .to(this.fireMesh.scale, {
+            x: scale.x,
+            y: scale.y,
+            z: scale.z,
+            duration  
+        }, 0)
+        .to(this.fireMesh.position, {
+            y: -0.5 + scale.y / 2,
+            duration
+        }, 0)
+
+        return tl
+    }
+
+    playWakeAnimation() {
+        gsap.timeline()
+        .add(this.setMode(FlameModes.HOLLOW, 0.25), 0)
+        .add(this.setMode(FlameModes.NORMAL, 0.25), 0.25)
+        .add(this.setMode(FlameModes.BRIGHT, 0.25), 0.5)
+        .add(this.setMode(FlameModes.EXTINCT, 0.4), 0.75)
+    }
+
+    playHoverAnimation() {
+        const duration = 0.6 / 4
+        gsap.timeline()
+        .add(this.setMode(FlameModes.EXTINCT, duration), 0)
+        .add(this.setMode(FlameModes.NORMAL, duration), duration)
+        .add(this.setMode(FlameModes.BRIGHT, duration), duration * 2)
+        .add(this.setMode(FlameModes.NORMAL, duration), duration * 3)
     }
 };

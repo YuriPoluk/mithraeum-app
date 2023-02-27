@@ -12,11 +12,12 @@
     "esModuleInterop": true,
     "noEmit": true,
     "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    "noUnusedParameters": false,
     "noImplicitReturns": true,
     "skipLibCheck": true,
     "noImplicitAny": true,
     "allowSyntheticDefaultImports": true,
+    "allowJs": true
   
   },
   "include": ["src"]
