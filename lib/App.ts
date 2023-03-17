@@ -13,33 +13,34 @@ export default class App {
 constructor(container: HTMLCanvasElement) {
   this.framesLimiter = new FramesLimiter(APP_MAX_FPS);
 
-        this.renderer = new WebGL1Renderer({
-            canvas: container,
-            antialias: true,
-            powerPreference: "high-performance",
-          });
+  this.renderer = new WebGL1Renderer({
+    canvas: container,
+    antialias: true,
+    powerPreference: "high-performance",
+    logarithmicDepthBuffer: true
+  });
 
-        this.renderer.setPixelRatio(window.devicePixelRatio);
+  this.renderer.setPixelRatio(window.devicePixelRatio);
 
-        this.setScene(new LoginScene(this.renderer))
-        this.onResize()
-        this.render()
+  this.setScene(new LoginScene(this.renderer))
+  this.onResize()
+  this.render()
 
-        addEventListener("resize", this.onResize.bind(this));
-    }
+  addEventListener("resize", this.onResize.bind(this));
+}
 
-    setScene(scene: LoginScene) {
-        this.currentScene = scene
-    }
+setScene(scene: LoginScene) {
+  this.currentScene = scene
+}
 
-    onResize() {
-        const { width, height } = this.renderer.domElement.getBoundingClientRect();
+onResize() {
+  const { width, height } = this.renderer.domElement.getBoundingClientRect();
 
-        this.renderer.setSize(width, height, false);    
-        if (this.currentScene) {
-          this.currentScene.resize(width, height);
-        }
-    }
+  this.renderer.setSize(width, height, false);    
+  if (this.currentScene) {
+    this.currentScene.resize(width, height);
+  }
+}
 
     dispose() {
         this.invalidated = true
@@ -64,6 +65,10 @@ constructor(container: HTMLCanvasElement) {
 
   // API
 
+  async init() {
+    await this.currentScene.initScene()
+  }
+
   setTopping(path: string) {
     this.currentScene.setTopping(path)
   }
@@ -72,19 +77,19 @@ constructor(container: HTMLCanvasElement) {
       this.currentScene.setCanvas(path)
   }
 
-  async setPattern(path: string, color: string | number) {
+  async setPattern(path?: string, color?: string | number) {
       this.currentScene.setPattern(path, color)
   }
 
-  async setDecorPrimary(path: string, color: string | number = 0xffffff) {
+  async setDecorPrimary(path?: string, color?: string | number) {
       this.currentScene.setDecorPrimary(path, color)
   }
 
-  async setDecorSecondary(path: string, color: string | number = 0xffffff) {
+  async setDecorSecondary(path?: string, color?: string | number) {
       this.currentScene.setDecorSecondary(path, color)
   }
 
-  async setDecorText(text: string, color: string | number = 0xffffff) {
+  async setDecorText(text?: string, color?: string | number) {
       this.currentScene.setDecorText(text, color)
   }
 
