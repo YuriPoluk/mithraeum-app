@@ -1,11 +1,11 @@
 import AppScene from './AppScene';
-import { Scene, PointLight, Mesh, Material, Shader, MeshBasicMaterial, SphereGeometry, BackSide, Quaternion, Euler, Color, Vector2, Raycaster, BoxGeometry, Object3D, MeshLambertMaterial, PlaneGeometry, AmbientLight, FogExp2, Vector3 } from 'three';
+import { Scene, PointLight, Mesh, Material, Shader, MeshBasicMaterial, SphereGeometry, BackSide, Quaternion, Euler, Color, Vector2, Raycaster, BoxGeometry, Object3D, MeshLambertMaterial, PlaneGeometry, AmbientLight, FogExp2, Vector3, Texture, BufferGeometry, Group } from 'three';
 import { WebGLRenderer, PerspectiveCamera } from 'three';
 import AssetLoader from '../utils/AssetLoader'
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls"
-import Fire, { FlameModes } from './flame/flame'
-import FireBuilder from './flame/FlameBuilder'
-import { CAMERA_POSITIONS, ASSETS, FIRES_DATA, FLAG_POSITION, CameraParams } from '../constants'
+import Flame, { FlameModes } from './flame/flame'
+import FlameBuilder from './flame/FlameBuilder'
+import { CAMERA_POSITIONS, ASSETS, FLAMES_DATA, FLAG_POSITION, CameraParams } from '../constants'
 import Flag from './flag/Flag'
 import gsap from 'gsap';
 
@@ -28,15 +28,17 @@ export default class LoginScene implements AppScene {
     private scene!: Scene
     private camera!: PerspectiveCamera
     private renderer!: WebGLRenderer
-    private fires: Fire[] = []
+    private flames: Flame[] = []
     private flag!: Flag
     private shaders: Shader[] = []
     private currentCameraAnimations: gsap.core.Tween[] = []
     private FOG_DEFAULT_DENSITY = 0.28
     private composer!: EffectComposer
     private outlinePass!: OutlinePass
+    private renderPass!: RenderPass
     private raycaster = new Raycaster()
     private objectsCreated = false
+    private invalidated = false
     private pointer?: Vector2
     private hitboxes: Mesh[] = []
     private previousHoveredArea: keyof typeof Locations = Locations.none as keyof typeof Locations
@@ -53,22 +55,30 @@ export default class LoginScene implements AppScene {
     private fogNoiseMoveSpeed = 0.3
     private fogNoiseImpact = 0.07
     private sky!: Mesh
+    private listener: (e: MouseEvent) => void
+    private geometries: BufferGeometry[] = []
+    private meshes: Mesh[] = []
+    private materials: Material[] = []
+    private textures: Texture[] = []
     
 
     constructor(renderer: WebGLRenderer) {
         this.renderer = renderer
         this.initGraphics()
 
-        addEventListener('pointermove', this.onPointerMove.bind(this))
+        this.listener = this.onPointerMove.bind(this)
+        addEventListener('pointermove', this.listener)
         this.addFogUniforms = this.addFogUniforms.bind(this)
     }
+
+    private intervalId!: number
 
     async initScene() {
         await this.createTexts()
         this.setIsBannerCreated(false)
         await this.initObjects()
-        this.playSceneInitFireAnimation()
-        setInterval(() => {
+        this.playSceneInitFlameAnimation()
+        this.intervalId = setInterval(() => {
             this.flag.setWind(!this.flag.getWindStatus())
         }, 7000)
     }
@@ -101,14 +111,13 @@ export default class LoginScene implements AppScene {
         this.scene.fog = new FogExp2(0x161c25, this.FOG_DEFAULT_DENSITY)
 
 		this.composer = new EffectComposer(this.renderer)
-        const renderPass = new RenderPass(this.scene, this.camera)
-		this.composer.addPass( renderPass );
-        this.outlinePass = new OutlinePass( new Vector2( window.innerWidth, window.innerHeight ), this.scene, this.camera );
+        this.renderPass = new RenderPass(this.scene, this.camera)
+		this.composer.addPass( this.renderPass )
+        this.outlinePass = new OutlinePass( new Vector2( window.innerWidth, window.innerHeight ), this.scene, this.camera )
         this.outlinePass.visibleEdgeColor = new Color(0xffffff)
         this.outlinePass.hiddenEdgeColor = new Color(0xffffff)
         this.outlinePass.edgeStrength = 5
         this.composer.addPass( this.outlinePass );
-        new OrbitControls(this.camera, this.renderer.domElement)
 
         const scene = this.scene
         this.pointLight = new PointLight(new Color(0x9ca4c5), 1.4, 0, 2.1)
@@ -119,25 +128,28 @@ export default class LoginScene implements AppScene {
 
     private bannerSettingsText!: Mesh
     private bannerCreateText!: Mesh
+    private textGeometry!: PlaneGeometry
 
     async createTexts() {
-        const textGeometry = new PlaneGeometry(0.6, 0.6, 1, 1)
+        this.textGeometry = new PlaneGeometry(0.6, 0.6, 1, 1)
+        this.geometries.push(this.textGeometry)
 
-        this.bannerSettingsText = await this.createText(textGeometry, '/texts/banner.png', new Vector3(-2.85, 0.4, 3.2), new Vector3(0.75, 0.75, 0.75), 
+        this.bannerSettingsText = await this.createText('/texts/banner.png', new Vector3(-2.85, 0.4, 3.2), new Vector3(0.75, 0.75, 0.75), 
                 new Vector3(this.camera.position.x + 0.5, this.camera.position.y - 1, this.camera.position.z)),
-        this.bannerCreateText = await this.createText(textGeometry, '/texts/create_new.png', new Vector3(-2.865, 0.4, 3.2), new Vector3(0.75, 0.75, 0.75), 
+        this.bannerCreateText = await this.createText('/texts/create_new.png', new Vector3(-2.865, 0.4, 3.2), new Vector3(0.75, 0.75, 0.75), 
                 new Vector3(this.camera.position.x + 0.5, this.camera.position.y - 1, this.camera.position.z))
 
-        return Promise.all([
-            this.createText(textGeometry, '/texts/play.png', new Vector3(-0.75, 0.46, 2.15), new Vector3(1.15, 1.15, 1.15), 
+        await Promise.all([
+            this.createText('/texts/play.png', new Vector3(-0.75, 0.46, 2.15), new Vector3(1.15, 1.15, 1.15), 
                 new Vector3(this.camera.position.x, this.camera.position.y - 0.2, this.camera.position.z)),
-            this.createText(textGeometry, '/texts/observe.png', new Vector3(0.3, 1.525, - 1.2), new Vector3(1.7, 1.7, 1.7), 
+            this.createText('/texts/observe.png', new Vector3(0.3, 1.525, - 1.2), new Vector3(1.7, 1.7, 1.7), 
                 new Vector3(this.camera.position.x, this.camera.position.y - 0.3, this.camera.position.z)),
         ])
     }
 
     private textColor = 0xb5b177
-    async createText(geometry: PlaneGeometry, path: string, position: Vector3, scale: Vector3, lookAt: Vector3): Promise<Mesh> {
+
+    async createText(path: string, position: Vector3, scale: Vector3, lookAt: Vector3): Promise<Mesh> {
         const tex = await AssetLoader.loadTextureAsync(path)
         const textMaterial = new MeshLambertMaterial({ 
             reflectivity: 1, 
@@ -145,7 +157,9 @@ export default class LoginScene implements AppScene {
             alphaMap: tex,
             transparent: true
         })
-        const mesh = new Mesh(geometry, textMaterial)
+        this.textures.push(tex)
+        this.materials.push(textMaterial)
+        const mesh = new Mesh(this.textGeometry, textMaterial)
         mesh.position.copy(position)
         mesh.scale.copy(scale)
         mesh.lookAt(lookAt)
@@ -153,6 +167,8 @@ export default class LoginScene implements AppScene {
         return mesh
     }
 
+
+    private models: Group[] = []
 
     async initObjects() {   
         const flag = new Flag(this.addFogUniforms)
@@ -170,12 +186,14 @@ export default class LoginScene implements AppScene {
         const hitboxMaterial = new MeshBasicMaterial({transparent: true, color: new Color(0xff0000), opacity: 0.3})
 
         const gateHitbox = new Mesh(new BoxGeometry(0.8, 0.9, 0.5), hitboxMaterial)
+        this.meshes.push(gateHitbox)
         gateHitbox.position.set(-0.645, 0, 2.017)
         gateHitbox.visible = false
         gateHitbox.userData = {location: Locations.gate}
         this.scene.add(gateHitbox)
 
         const townhallHitbox = new Mesh(new BoxGeometry(0.8, 0.9, 0.7), hitboxMaterial)
+        this.meshes.push(townhallHitbox)
         townhallHitbox.position.set(0.419, 1.206, -1.401)
         townhallHitbox.visible = false
         townhallHitbox.userData = {location: Locations.townhall}
@@ -185,6 +203,7 @@ export default class LoginScene implements AppScene {
 
         for (let assetPath of ASSETS) {
             const gltf = await AssetLoader.loadModelAsync('/scene/' + assetPath)
+            this.models.push(gltf.scene)
             this.scene.add(gltf.scene)
             gltf.scene.traverse(c => {
                 if (c.name === 'ostrovci002_2') {
@@ -195,12 +214,12 @@ export default class LoginScene implements AppScene {
             }) 
         }
 
-        FIRES_DATA.forEach(fireData => {
-            const fire = FireBuilder.build(fireData)
-            this.scene.add(fire)
-            this.fires.push(fire)
-            const fireMaterial = fire.fireMesh.material as Material
-            fireMaterial.onBeforeCompile = this.addFogUniforms
+        FLAMES_DATA.forEach(flameData => {
+            const flame = FlameBuilder.build(flameData)
+            this.scene.add(flame)
+            this.flames.push(flame)
+            const flameMaterial = flame.flameMesh.material as Material
+            flameMaterial.onBeforeCompile = this.addFogUniforms
         })
 
         const sky = new Mesh(
@@ -209,7 +228,8 @@ export default class LoginScene implements AppScene {
                 color: 0x111b25,
                 side: BackSide,
             })
-        );
+        )
+        this.meshes.push(sky)
         sky.material.onBeforeCompile = this.addFogUniforms
         this.scene.add( sky);
         sky.position.z = 3
@@ -252,7 +272,7 @@ export default class LoginScene implements AppScene {
         if (!this.objectsCreated) return
 
         this.elapsedTime += dt
-        this.fires.forEach(fire => fire.update(this.elapsedTime))
+        this.flames.forEach(flame => flame.update(this.elapsedTime))
         this.flag.update(dt)
         this.shaders.forEach(s => {
             s.uniforms.fogTime = { value: this.elapsedTime }
@@ -260,6 +280,8 @@ export default class LoginScene implements AppScene {
     }
 
     render(dt: number) {
+        if (this.invalidated) return
+
         this.update(dt)
         this.checkHover()
         this.composer.render()
@@ -293,14 +315,14 @@ export default class LoginScene implements AppScene {
         switch (hoveredArea) {
             case 'gate':
                 for (let i = 1; i < 5; i++) 
-                    this.fires[i].playHoverAnimation()
+                    this.flames[i].playHoverAnimation()
                 break
             case 'flag': 
-                this.fires[0].playHoverAnimation()
+                this.flames[0].playHoverAnimation()
                 break
             case 'townhall':
-                this.fires[5].playHoverAnimation()
-                this.fires[6].playHoverAnimation()
+                this.flames[5].playHoverAnimation()
+                this.flames[6].playHoverAnimation()
                 this.setFog(false)
                 break
             default:
@@ -310,14 +332,14 @@ export default class LoginScene implements AppScene {
         switch (previousHoveredArea) {
             case 'gate':
                 for (let i = 1; i < 5; i++) 
-                    this.fires[i].setMode(FlameModes.HOLLOW, 0.5)
+                    this.flames[i].setMode(FlameModes.HOLLOW, 0.5)
                 break
             case 'flag': 
-                this.fires[0].setMode(FlameModes.HOLLOW, 0.5)
+                this.flames[0].setMode(FlameModes.HOLLOW, 0.5)
                 break
             case 'townhall':
-                this.fires[5].setMode(FlameModes.HOLLOW, 0.5)
-                this.fires[6].setMode(FlameModes.HOLLOW, 0.5)
+                this.flames[5].setMode(FlameModes.HOLLOW, 0.5)
+                this.flames[6].setMode(FlameModes.HOLLOW, 0.5)
                 this.setFog(true)
                 break
             default:
@@ -326,7 +348,30 @@ export default class LoginScene implements AppScene {
     }
 
     dispose() {
-
+        this.invalidated = true
+        removeEventListener('pointermove', this.listener)
+        clearInterval(this.intervalId)
+        this.textures.forEach(t => t.dispose())
+        this.materials.forEach(m => m.dispose())
+        this.geometries.forEach(g => g.dispose())
+        this.meshes.forEach(m => {
+            m.geometry.dispose()
+            const material = m.material as Material
+            material.dispose()
+        })
+        this.models.forEach(m => {
+            m.traverse(o => {
+                if (o instanceof Mesh) {
+                    o.geometry.dispose()
+                    o.material.dispose()
+                }
+            })
+        })
+        this.flag.dispose()
+        this.flames.forEach(f => f.dispose())
+        this.outlinePass.dispose()
+        this.renderPass.dispose()
+        this.composer.dispose()
     }
 
     resize(w: number, h: number) {
@@ -399,11 +444,11 @@ export default class LoginScene implements AppScene {
         }
     }
 
-    playSceneInitFireAnimation() {
+    playSceneInitFlameAnimation() {
         for (let i = 0; i < 7; i++) 
-            this.fires[i].playWakeAnimation()
-        for (let i = 7; i < this.fires.length; i++)
-            this.fires[i].setMode(FlameModes.NORMAL, 0.5)
+            this.flames[i].playWakeAnimation()
+        for (let i = 7; i < this.flames.length; i++)
+            this.flames[i].setMode(FlameModes.NORMAL, 0.5)
     }
 
 
@@ -419,9 +464,9 @@ export default class LoginScene implements AppScene {
             pointLightColor: this.pointLight.color.getHex(),
             ambientLightColor: this.ambientLight.color.getHex(),
             //@ts-ignore
-            bannerFlameColor: this.fires[0].fireMesh.material.uniforms.color.value.getHex(),
+            bannerFlameColor: this.flames[0].flameMesh.material.uniforms.color.value.getHex(),
             //@ts-ignore
-            otherFlameColor: this.fires[1].fireMesh.material.uniforms.color.value.getHex(),
+            otherFlameColor: this.flames[1].flameMesh.material.uniforms.color.value.getHex(),
             fogHeightFactor: this.shaders[0].uniforms.fogHeightFactor.value,
             fogNoiseFrequency: this.shaders[0].uniforms.fogNoiseFrequency.value,
             fogNoiseMoveSpeed: this.shaders[0].uniforms.fogNoiseMoveSpeed.value,
@@ -473,12 +518,12 @@ export default class LoginScene implements AppScene {
         flameParamsFolder
             .addColor(paramsToChange, 'bannerFlameColor')
             //@ts-ignore
-            .onChange(value => this.fires.forEach(f => f.fireMesh.material.uniforms.color.set(value)))
+            .onChange(value => this.flames.forEach(f => f.flameMesh.material.uniforms.color.set(value)))
 
         const bannerFlameFolder = gui.addFolder('banner flame')
         bannerFlameFolder
         .addColor(paramsToChange, 'bannerFlameColor')
         //@ts-ignore
-        .onChange(value => this.fires[0].fireMesh.material.uniforms.color.set(value))
+        .onChange(value => this.flames[0].flameMesh.material.uniforms.color.set(value))
     }
 }

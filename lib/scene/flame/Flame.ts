@@ -1,5 +1,5 @@
 import { BoxGeometry, ClampToEdgeWrapping, Color, LinearFilter, Matrix4, Mesh, Object3D, PointLight, ShaderMaterial, TextureLoader, UniformsLib, UniformsUtils, Vector3 } from "three";
-import { FireShader } from "./FlameShader";
+import { FlameShader } from "./FlameShader";
 import gsap from 'gsap'
 
 export enum FlameModes {
@@ -34,7 +34,7 @@ const FLAME_PARAMS = {
 
 export default class Flame extends Object3D {
 
-    fireMesh: Mesh
+    flameMesh: Mesh
     light: PointLight
     distance: number
     intensity: number 
@@ -47,35 +47,35 @@ export default class Flame extends Object3D {
         
         this.distance = distance
         this.intensity = intensity
-        const fireTex = new TextureLoader().load('Fire.png');
-        fireTex.magFilter = fireTex.minFilter = LinearFilter;
-        fireTex.wrapS = fireTex.wrapT = ClampToEdgeWrapping;
+        const flameTex = new TextureLoader().load('Fire.png');
+        flameTex.magFilter = flameTex.minFilter = LinearFilter;
+        flameTex.wrapS = flameTex.wrapT = ClampToEdgeWrapping;
         const color = new Color(0xfcc603)
 
         const flameUniforms = UniformsUtils.merge([
             UniformsLib.common,
             UniformsLib.fog,
-            UniformsUtils.clone(FireShader.uniforms),
+            UniformsUtils.clone(FlameShader.uniforms),
         ])
 
-        var fireMaterial = new ShaderMaterial( {
-            defines         : FireShader.defines,
+        var flameMaterial = new ShaderMaterial( {
+            defines         : FlameShader.defines,
             uniforms        : flameUniforms,
-            vertexShader    : FireShader.vertexShader,
-            fragmentShader  : FireShader.fragmentShader,
+            vertexShader    : FlameShader.vertexShader,
+            fragmentShader  : FlameShader.fragmentShader,
             transparent     : true,
             depthWrite      : true,
             depthTest       : true,
             fog: true
         } );
             
-        fireMaterial.uniforms.fireTex.value = fireTex;
-        fireMaterial.uniforms.color.value = color || new Color( 0xeeeeee );
-        fireMaterial.uniforms.invModelMatrix.value = new Matrix4();
-        fireMaterial.uniforms.scale.value = new Vector3( 1, 1, 1 );
-        fireMaterial.uniforms.seed.value = Math.random() * 19.19;
-        this.fireMesh = new Mesh(new BoxGeometry( 1.0, 1.0, 1.0 ), fireMaterial)
-        this.add(this.fireMesh)
+        flameMaterial.uniforms.flameTex.value = flameTex;
+        flameMaterial.uniforms.color.value = color || new Color( 0xeeeeee );
+        flameMaterial.uniforms.invModelMatrix.value = new Matrix4();
+        flameMaterial.uniforms.scale.value = new Vector3( 1, 1, 1 );
+        flameMaterial.uniforms.seed.value = Math.random() * 19.19;
+        this.flameMesh = new Mesh(new BoxGeometry( 1.0, 1.0, 1.0 ), flameMaterial)
+        this.add(this.flameMesh)
 
         this.light = new PointLight(color, intensity, distance)
         this.add(this.light)
@@ -83,11 +83,11 @@ export default class Flame extends Object3D {
     }
 
     update(time: number) {
-        const material = this.fireMesh.material as ShaderMaterial
+        const material = this.flameMesh.material as ShaderMaterial
         var invModelMatrix = material.uniforms.invModelMatrix.value as Matrix4;
 
-        this.fireMesh.updateMatrixWorld();
-        invModelMatrix.copy(this.fireMesh.matrixWorld).invert();
+        this.flameMesh.updateMatrixWorld();
+        invModelMatrix.copy(this.flameMesh.matrixWorld).invert();
     
         if( time !== undefined ) {
             material.uniforms.time.value = time * 1.4;
@@ -97,10 +97,10 @@ export default class Flame extends Object3D {
     
         material.uniforms.scale.value = this.scale;
 
-        const fireIntensityNoise = Math.sin(time * this.randomOffset * 9) * 0.3 + Math.random() * (0.5 - 0.1) + 0.1
-        this.light.distance = this.distance * this.distanceMultiplier + fireIntensityNoise / 2
-        this.light.intensity = this.intensity * this.intensityMultiplier + fireIntensityNoise / 2
-        this.light.decay = 2 + fireIntensityNoise / 3
+        const flameIntensityNoise = Math.sin(time * this.randomOffset * 9) * 0.3 + Math.random() * (0.5 - 0.1) + 0.1
+        this.light.distance = this.distance * this.distanceMultiplier + flameIntensityNoise / 2
+        this.light.intensity = this.intensity * this.intensityMultiplier + flameIntensityNoise / 2
+        this.light.decay = 2 + flameIntensityNoise / 3
     }
 
     setMode(m: FlameModes, duration: number) {
@@ -112,13 +112,13 @@ export default class Flame extends Object3D {
             intensityMultiplier,
             duration
         }, 0)
-        .to(this.fireMesh.scale, {
+        .to(this.flameMesh.scale, {
             x: scale.x,
             y: scale.y,
             z: scale.z,
             duration  
         }, 0)
-        .to(this.fireMesh.position, {
+        .to(this.flameMesh.position, {
             y: scale.y * 0.5,
             duration
         }, 0)
@@ -141,5 +141,13 @@ export default class Flame extends Object3D {
         .add(this.setMode(FlameModes.NORMAL, duration), duration)
         .add(this.setMode(FlameModes.BRIGHT, duration), duration * 2)
         .add(this.setMode(FlameModes.NORMAL, duration), duration * 3)
+    }
+
+    dispose() {
+        this.flameMesh.geometry.dispose()
+        const material = this.flameMesh.material as ShaderMaterial
+        material.uniforms.flameTex.value.dispose()
+        material.dispose()
+        this.light.dispose()
     }
 };

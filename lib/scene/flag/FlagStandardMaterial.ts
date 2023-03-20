@@ -1,4 +1,4 @@
-import { Color, DoubleSide, ShaderMaterial, Texture, UniformsUtils, UniformsLib, ShaderLib, Shader } from "three"
+import { Color, DoubleSide, ShaderMaterial, Texture, UniformsUtils, UniformsLib, ShaderLib } from "three"
 
 
 export type FlagTexturesColors = {

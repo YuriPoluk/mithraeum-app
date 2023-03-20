@@ -42,7 +42,7 @@ export const CAMERA_POSITIONS: { [key: string]: CameraParams } = {
     }
 }
 
-export interface FireData {
+export interface FlameData {
     position: Vector3
     scale: Vector3,
     rotation?: Vector3
@@ -52,7 +52,7 @@ export interface FireData {
 
 export const FLAG_POSITION = new Vector3(-2.79, -0.4, 3.05)
 
-export const FIRES_DATA: FireData[] = [
+export const FLAMES_DATA: FlameData[] = [
     {
         position: new Vector3(-2.612, -0.17, 3.4),
         scale: new Vector3(0.9, 2.7, 0.9).multiplyScalar(0.05),

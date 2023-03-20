@@ -11,14 +11,13 @@ let Ammo: typeof AmmoModule
 export default class Flag extends Group {
     flagGroup!: Group
     hitbox!: Mesh
-    
+
     private addFogUniforms: (s: Shader) => void
     private physicsWorld!: AmmoModule.btSoftRigidDynamicsWorld
     private cloth!: Mesh
     private topping!: Group
-    private transformAux!: AmmoModule.btTransform
-    private rigidBodies = []
     private objectsCreated = false
+    private invalidated = false
     private isWindy = false
     private texIndices = {
         canvas: 0,
@@ -68,8 +67,6 @@ export default class Flag extends Group {
         this.physicsWorld = new Ammo.btSoftRigidDynamicsWorld( dispatcher, broadphase, solver, collisionConfiguration, softBodySolver );
         this.physicsWorld.setGravity( new Ammo.btVector3( 0, this.GRAVITY_CONSTANT, 0 ) );
         this.physicsWorld.getWorldInfo().set_m_gravity( new Ammo.btVector3( 0, this.GRAVITY_CONSTANT, 0 ) );
-
-        this.transformAux = new Ammo.btTransform();
     }
 
     async createObjects() {
@@ -202,7 +199,7 @@ export default class Flag extends Group {
 
     update(dt: number) {
 
-        if (!this.objectsCreated) return
+        if (!this.objectsCreated || this.invalidated) return
 
         if (this.isWindy) this.applyWindForce(dt/1000)
 
@@ -294,5 +291,24 @@ export default class Flag extends Group {
             this.texColors.decorText = color
 
         this.updateMaterial()
+    }
+
+    dispose() {
+        //@ts-ignore
+        Ammo = null
+        this.flagGroup.traverse(o => {
+            if (o instanceof Mesh) {
+                o.geometry.dispose()
+                o.material.dispose()
+            }
+        })
+        this.textures.forEach(t => t.dispose())
+        this.cloth.geometry.dispose()
+        let material = this.cloth.material as Material
+        material.dispose()
+        this.hitbox.geometry.dispose()
+        material = this.hitbox.material as Material
+        material.dispose()
+        this.invalidated = true
     }
 }

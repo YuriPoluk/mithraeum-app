@@ -1,6 +1,6 @@
 import { Vector4 } from "three";
 
-export const FireShader = {
+export const FlameShader = {
 
     defines: {
         "ITERATIONS"    : "20",
@@ -8,7 +8,7 @@ export const FireShader = {
     },
 
     uniforms: {
-        "fireTex"       : { type : "t",     value : null },
+        "flameTex"       : { type : "t",     value : null },
         "color"         : { type : "c",     value : null },
         "time"          : { type : "f",     value : 0.0 },
         "seed"          : { type : "f",     value : 0.0 },
@@ -53,7 +53,7 @@ export const FireShader = {
         "uniform float lacunarity;",
         "uniform float gain;",
 
-        "uniform sampler2D fireTex;",
+        "uniform sampler2D flameTex;",
 
         "varying vec3 vWorldPos;",
 
@@ -75,7 +75,7 @@ export const FireShader = {
             "return sum;",
         "}",
 
-        "vec4 samplerFire (vec3 p, vec4 scale) {",
+        "vec4 samplerFlame (vec3 p, vec4 scale) {",
             "vec2 st = vec2(sqrt(dot(p.xz, p.xz)), p.y);",
 
             "if(st.x <= 0.0 || st.x >= 1.0 || st.y <= 0.0 || st.y >= 1.0) return vec4(0.0);",
@@ -87,7 +87,7 @@ export const FireShader = {
 
             "if(st.y <= 0.0 || st.y >= 1.0) return vec4(0.0);",
            
-            "return texture2D(fireTex, st);",
+            "return texture2D(flameTex, st);",
         "}",
 
         "vec3 localize(vec3 p) {",
@@ -108,7 +108,7 @@ export const FireShader = {
 
                 "lp.y += 0.5;",
                 "lp.xz *= 2.0;",
-                "col += samplerFire(lp, noiseScale);",
+                "col += samplerFlame(lp, noiseScale);",
             "}",
 
             "col.a = col.r;",
